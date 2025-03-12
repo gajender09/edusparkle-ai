@@ -2,8 +2,14 @@
 import { GraduationCap, Search, Menu, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import AuthLinks from "./AuthLinks";
 
 const NavigationHeader = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // This would ideally come from your auth context or state management
+  const isLoggedIn = window.location.pathname === "/my-learning"; // Simple simulation for demo
+  
   return (
     <header className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -36,16 +42,61 @@ const NavigationHeader = () => {
             <Button variant="ghost" size="icon">
               <Search className="h-5 w-5" />
             </Button>
-            <Button asChild>
-              <Link to="/get-started">Get Started</Link>
-            </Button>
+            <AuthLinks isLoggedIn={isLoggedIn} />
           </div>
         </div>
         
-        <Button variant="ghost" size="icon" className="md:hidden">
+        <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
           <Menu className="h-5 w-5" />
         </Button>
       </div>
+      
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <div className="md:hidden py-4 px-4 bg-white border-b border-gray-100 animate-fade-in">
+          <nav className="flex flex-col space-y-2">
+            <Button variant="ghost" asChild className="justify-start">
+              <Link to="/courses">Courses</Link>
+            </Button>
+            <Button variant="ghost" asChild className="justify-start">
+              <Link to="/my-learning">My Learning</Link>
+            </Button>
+            <Button variant="ghost" asChild className="justify-start">
+              <Link to="/resources">Resources</Link>
+            </Button>
+            <Button variant="ghost" asChild className="justify-start flex items-center gap-1">
+              <Link to="/create-course">
+                <Plus className="h-4 w-4" />
+                Create Course
+              </Link>
+            </Button>
+            <div className="pt-2 border-t border-gray-100">
+              {isLoggedIn ? (
+                <>
+                  <Button variant="ghost" asChild className="justify-start w-full">
+                    <Link to="/profile">Profile</Link>
+                  </Button>
+                  <Button variant="ghost" asChild className="justify-start w-full">
+                    <Link to="/settings">Settings</Link>
+                  </Button>
+                  <Button variant="ghost" className="justify-start w-full text-red-500">
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <div className="flex flex-col space-y-2">
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link to="/sign-in">Sign In</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/sign-up">Sign Up</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

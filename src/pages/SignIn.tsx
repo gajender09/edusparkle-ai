@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +9,22 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import NavigationHeader from "@/components/NavigationHeader";
 import { useAuth } from "@/context/AuthContext";
+import { useEffect } from "react";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate("/my-learning");
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +37,7 @@ const SignIn = () => {
         toast.error(error.message || "Failed to sign in. Please check your credentials.");
       } else if (success) {
         toast.success("Signed in successfully!");
+        // Navigation is handled in the AuthContext
       }
     } catch (error) {
       toast.error("An unexpected error occurred. Please try again.");
@@ -36,6 +46,11 @@ const SignIn = () => {
       setIsLoading(false);
     }
   };
+
+  // Don't render the sign-in form if the user is already authenticated
+  if (user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-white">

@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import AuthLinks from "./AuthLinks";
+import { useAuth } from "@/context/AuthContext";
 
 const NavigationHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { profile } = useAuth();
+  const firstName = profile?.full_name ? profile.full_name.split(' ')[0] : '';
   
   return (
     <header className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
@@ -40,6 +43,11 @@ const NavigationHeader = () => {
             <Button variant="ghost" size="icon">
               <Search className="h-5 w-5" />
             </Button>
+            {firstName && (
+              <span className="text-sm font-medium mr-2">
+                Hi, {firstName}
+              </span>
+            )}
             <AuthLinks />
           </div>
         </div>
@@ -53,6 +61,11 @@ const NavigationHeader = () => {
       {isMenuOpen && (
         <div className="md:hidden py-4 px-4 bg-white border-b border-gray-100 animate-fade-in">
           <nav className="flex flex-col space-y-2">
+            {firstName && (
+              <div className="pb-2 mb-2 border-b border-gray-100">
+                <span className="text-sm font-medium">Hi, {firstName}</span>
+              </div>
+            )}
             <Button variant="ghost" asChild className="justify-start">
               <Link to="/courses">Courses</Link>
             </Button>

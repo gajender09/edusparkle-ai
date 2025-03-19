@@ -28,7 +28,7 @@ const SignUp = () => {
       if (error) {
         toast.error(error.message || "Failed to create account. Please try again.");
       } else if (success) {
-        toast.success("Account created successfully!");
+        // The welcome toast is now handled in the AuthContext
       }
     } catch (error) {
       toast.error("An unexpected error occurred. Please try again.");

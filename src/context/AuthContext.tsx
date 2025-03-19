@@ -3,10 +3,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 type AuthContextType = {
   session: Session | null;
   user: User | null;
+  profile: { full_name: string | null } | null;
   signIn: (email: string, password: string) => Promise<{
     error: Error | null;
     success: boolean;
@@ -24,8 +26,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', userId)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching profile:", error);
+        return;
+      }
+      
+      setProfile(data);
+    } catch (error) {
+      console.error("Error in fetchProfile:", error);
+    }
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -33,6 +55,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          fetchProfile(currentSession.user.id);
+        } else {
+          setProfile(null);
+        }
+        
         setIsLoading(false);
       }
     );
@@ -41,6 +70,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        fetchProfile(currentSession.user.id);
+      }
+      
       setIsLoading(false);
     });
 
@@ -81,7 +115,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (error) throw error;
       
-      navigate("/my-learning");
+      toast.success(`Welcome ${fullName.split(' ')[0]}! Your account has been created.`);
+      navigate("/create-course");
       return { error: null, success: true };
     } catch (error) {
       console.error("Error signing up:", error);
@@ -104,6 +139,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     session,
     user,
+    profile,
     signIn,
     signUp,
     signOut,

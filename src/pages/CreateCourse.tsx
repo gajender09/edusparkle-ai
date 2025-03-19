@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +11,9 @@ import CourseContent from "@/components/CourseContent";
 import CourseGlossary from "@/components/CourseGlossary";
 import CourseRoadmap from "@/components/CourseRoadmap";
 import CourseResources from "@/components/CourseResources";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
 
 type CourseLevel = "beginner" | "intermediate" | "advanced";
 
@@ -57,6 +59,7 @@ const CreateCourse = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCourse, setGeneratedCourse] = useState<GeneratedCourse | null>(null);
   const [activeTab, setActiveTab] = useState("content");
+  const { user } = useAuth();
 
   const handleGenerateCourse = async () => {
     if (!title) {
@@ -68,102 +71,99 @@ const CreateCourse = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to generate courses",
+        variant: "destructive",
+      });
+      navigate("/sign-in");
+      return;
+    }
+
     setIsGenerating(true);
     
-    // In a real implementation, this would be an API call to an AI service
-    setTimeout(() => {
-      // Mock data - in a real app this would come from the AI service
-      const mockCourse: GeneratedCourse = {
-        title,
-        level,
-        description: `A comprehensive ${level} level course on ${title}. This AI-generated curriculum provides structured learning materials to help you master the subject.`,
-        content: {
-          modules: [
-            {
-              title: "Getting Started with " + title,
-              description: "Learn the fundamentals and key concepts.",
-              lessons: [
-                { title: "Introduction to " + title, description: "An overview of the subject and its importance." },
-                { title: "Core Concepts", description: "Understanding the essential principles." },
-                { title: "Setup Your Learning Environment", description: "Prepare the tools and resources you'll need." }
-              ]
-            },
-            {
-              title: "Building Your Knowledge",
-              description: "Develop deeper understanding through hands-on practice.",
-              lessons: [
-                { title: "Practical Applications", description: "Applying concepts to real-world scenarios." },
-                { title: "Problem Solving Techniques", description: "Develop your analytical thinking." },
-                { title: "Advanced Implementation", description: "Take your skills to the next level." }
-              ]
-            }
-          ]
-        },
-        glossary: [
-          { term: title + " Architecture", definition: "The foundational structure that defines how components work together." },
-          { term: "Implementation Patterns", definition: "Standardized approaches to solving common problems in the field." },
-          { term: "Best Practices", definition: "Recommended methods and techniques widely accepted by experts." },
-          { term: "Optimization Strategies", definition: "Approaches to improve efficiency and performance." }
-        ],
-        roadmap: [
-          { 
-            stage: "Foundation", 
-            milestones: [
-              "Understand basic principles",
-              "Complete introductory exercises",
-              "Pass the knowledge assessment"
-            ] 
-          },
-          { 
-            stage: "Application", 
-            milestones: [
-              "Apply concepts to a small project",
-              "Receive feedback and iterate",
-              "Document your learning process"
-            ] 
-          },
-          { 
-            stage: "Mastery", 
-            milestones: [
-              "Complete an advanced project",
-              "Teach concepts to others",
-              "Contribute to the community"
-            ] 
-          }
-        ],
-        resources: {
-          articles: [
-            { title: "Comprehensive Guide to " + title, url: "https://example.com/guide" },
-            { title: title + " for " + level + "s", url: "https://example.com/level-guide" },
-            { title: "Latest Trends in " + title, url: "https://example.com/trends" }
-          ],
-          videos: [
-            { title: title + " Crash Course", url: "https://example.com/crash-course" },
-            { title: "Deep Dive into " + title, url: "https://example.com/deep-dive" },
-            { title: "Expert Tips for " + title, url: "https://example.com/tips" }
-          ]
-        }
-      };
+    try {
+      const response = await supabase.functions.invoke('generate-course', {
+        body: { title, level },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to generate course');
+      }
+
+      const generatedCourseData = response.data as GeneratedCourse;
       
-      setGeneratedCourse(mockCourse);
-      setIsGenerating(false);
-      
+      setGeneratedCourse(generatedCourseData);
       toast({
         title: "Course Generated!",
         description: "Your AI-generated course is ready to explore.",
       });
-    }, 2000);
+    } catch (error) {
+      console.error("Error generating course:", error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate course. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleSaveCourse = () => {
-    // In a real app, this would save to a database
-    toast({
-      title: "Course Saved",
-      description: "Your course has been added to your library.",
-    });
-    
-    // Navigate to home or course page
-    setTimeout(() => navigate("/"), 1500);
+  const handleSaveCourse = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to save courses",
+        variant: "destructive",
+      });
+      navigate("/sign-in");
+      return;
+    }
+
+    if (!generatedCourse) {
+      toast({
+        title: "No Course to Save",
+        description: "Please generate a course first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('courses')
+        .insert({
+          user_id: user.id,
+          title: generatedCourse.title,
+          level: generatedCourse.level,
+          description: generatedCourse.description,
+          content: generatedCourse.content,
+          glossary: generatedCourse.glossary,
+          roadmap: generatedCourse.roadmap,
+          resources: generatedCourse.resources
+        });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Course Saved",
+        description: "Your course has been added to your library.",
+      });
+      
+      // Navigate to home or course page
+      setTimeout(() => navigate("/my-learning"), 1500);
+    } catch (error) {
+      console.error("Error saving course:", error);
+      toast({
+        title: "Failed to Save",
+        description: "There was an error saving your course. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

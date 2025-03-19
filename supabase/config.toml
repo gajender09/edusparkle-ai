@@ -1,1 +1,6 @@
+
 project_id = "zomlveojlqmqqovozhjn"
+[api]
+enabled = true
+[functions]
+enabled = true

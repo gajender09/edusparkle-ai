@@ -1,45 +1,68 @@
 
+import { useEffect, useState } from "react";
 import NavigationHeader from "@/components/NavigationHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CourseCard from "@/components/CourseCard";
-import { BookOpen, Clock, Star } from "lucide-react";
+import { BookOpen, Clock, Star, Plus } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
-const enrolledCourses = [
-  {
-    title: "Introduction to Artificial Intelligence",
-    description: "Learn the fundamentals of AI and machine learning with hands-on projects.",
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995",
-    category: "Technology",
-    progress: 45,
-  },
-  {
-    title: "Data Science Fundamentals",
-    description: "Master the essential tools and techniques of modern data science.",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71",
-    category: "Data Science",
-    progress: 25,
-  },
-];
-
-const savedCourses = [
-  {
-    title: "Web Development Bootcamp",
-    description: "Build modern web applications from scratch with the latest technologies.",
-    image: "https://images.unsplash.com/photo-1627398242454-45a1465c2479",
-    category: "Programming",
-    progress: 0,
-  },
-  {
-    title: "UX/UI Design Fundamentals",
-    description: "Master the principles of user experience and interface design.",
-    image: "https://images.unsplash.com/photo-1559028012-481c04fa702d",
-    category: "Design",
-    progress: 0,
-  },
-];
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  level: string;
+  created_at: string;
+  progress?: number;
+}
 
 const MyLearning = () => {
+  const { user } = useAuth();
+  const [enrolledCourses, setEnrolledCourses] = useState<Course[]>([]);
+  const [savedCourses, setEnrolledSaved] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (!user) return;
+
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('courses')
+          .select('id, title, description, level, created_at')
+          .eq('user_id', user.id);
+
+        if (error) {
+          throw error;
+        }
+
+        // For this version, we'll treat all courses as "enrolled" 
+        // In a real app, you might have a separate enrollments table
+        const formattedCourses = data.map(course => ({
+          ...course,
+          // Add a placeholder image since we don't store images yet
+          image: `https://source.unsplash.com/random/800x600?${encodeURIComponent(course.title)}`,
+          category: course.level.charAt(0).toUpperCase() + course.level.slice(1),
+          progress: Math.floor(Math.random() * 100) // Mock progress for now
+        }));
+
+        setEnrolledCourses(formattedCourses);
+        setEnrolledSaved([]);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to load your courses. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCourses();
+  }, [user]);
+
   return (
     <div className="min-h-screen bg-white">
       <NavigationHeader />
@@ -56,6 +79,11 @@ const MyLearning = () => {
             <Button variant="outline" className="flex items-center gap-2">
               <Star className="h-4 w-4" /> Favorites
             </Button>
+            <Button asChild className="flex items-center gap-2">
+              <Link to="/create-course">
+                <Plus className="h-4 w-4" /> Create Course
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -69,18 +97,44 @@ const MyLearning = () => {
           </TabsList>
           
           <TabsContent value="enrolled" className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {enrolledCourses.map((course, index) => (
-                <CourseCard key={`enrolled-${index}`} {...course} />
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : enrolledCourses.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {enrolledCourses.map((course, index) => (
+                  <CourseCard key={`enrolled-${course.id}`} {...course} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="bg-gray-100 p-4 rounded-full mb-4">
+                  <BookOpen className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-medium mb-2">No courses yet</h3>
+                <p className="text-gray-600 mb-6 max-w-md">
+                  Create your first AI-generated course to get started on your learning journey.
+                </p>
+                <Button asChild>
+                  <Link to="/create-course">Create a Course</Link>
+                </Button>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="saved" className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {savedCourses.map((course, index) => (
-                <CourseCard key={`saved-${index}`} {...course} />
-              ))}
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="bg-gray-100 p-4 rounded-full mb-4">
+                <Star className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-medium mb-2">No saved courses</h3>
+              <p className="text-gray-600 mb-6 max-w-md">
+                Save courses to access them later and build your learning library.
+              </p>
+              <Button asChild>
+                <Link to="/courses">Browse Courses</Link>
+              </Button>
             </div>
           </TabsContent>
           
@@ -94,7 +148,7 @@ const MyLearning = () => {
                 When you complete courses, they'll appear here to track your achievements.
               </p>
               <Button asChild>
-                <a href="/courses">Browse Courses</a>
+                <Link to="/courses">Browse Courses</Link>
               </Button>
             </div>
           </TabsContent>

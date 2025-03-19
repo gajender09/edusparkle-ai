@@ -7,8 +7,6 @@ import AuthLinks from "./AuthLinks";
 
 const NavigationHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // This would ideally come from your auth context or state management
-  const isLoggedIn = window.location.pathname === "/my-learning"; // Simple simulation for demo
   
   return (
     <header className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">
@@ -42,7 +40,7 @@ const NavigationHeader = () => {
             <Button variant="ghost" size="icon">
               <Search className="h-5 w-5" />
             </Button>
-            <AuthLinks isLoggedIn={isLoggedIn} />
+            <AuthLinks />
           </div>
         </div>
         
@@ -71,28 +69,7 @@ const NavigationHeader = () => {
               </Link>
             </Button>
             <div className="pt-2 border-t border-gray-100">
-              {isLoggedIn ? (
-                <>
-                  <Button variant="ghost" asChild className="justify-start w-full">
-                    <Link to="/profile">Profile</Link>
-                  </Button>
-                  <Button variant="ghost" asChild className="justify-start w-full">
-                    <Link to="/settings">Settings</Link>
-                  </Button>
-                  <Button variant="ghost" className="justify-start w-full text-red-500">
-                    Sign Out
-                  </Button>
-                </>
-              ) : (
-                <div className="flex flex-col space-y-2">
-                  <Button variant="ghost" asChild className="justify-start">
-                    <Link to="/sign-in">Sign In</Link>
-                  </Button>
-                  <Button asChild>
-                    <Link to="/sign-up">Sign Up</Link>
-                  </Button>
-                </div>
-              )}
+              <AuthLinks className="flex flex-col space-y-2" />
             </div>
           </nav>
         </div>

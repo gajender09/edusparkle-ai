@@ -3,16 +3,17 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { LogIn, User } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface AuthLinksProps {
   className?: string;
-  isLoggedIn?: boolean;
 }
 
-const AuthLinks = ({ className, isLoggedIn = false }: AuthLinksProps) => {
+const AuthLinks = ({ className }: AuthLinksProps) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
   
-  if (isLoggedIn) {
+  if (user) {
     return (
       <div className={`relative ${className}`}>
         <Button 
@@ -39,7 +40,10 @@ const AuthLinks = ({ className, isLoggedIn = false }: AuthLinksProps) => {
               <button 
                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" 
                 role="menuitem"
-                onClick={() => window.location.href = "/"}
+                onClick={() => {
+                  signOut();
+                  setIsProfileMenuOpen(false);
+                }}
               >
                 Sign Out
               </button>

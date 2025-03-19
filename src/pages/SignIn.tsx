@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,27 +8,30 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import NavigationHeader from "@/components/NavigationHeader";
+import { useAuth } from "@/context/AuthContext";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Simulate authentication for demo purposes
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error, success } = await signIn(email, password);
       
-      // Successful login
-      toast.success("Signed in successfully!");
-      navigate("/my-learning");
+      if (error) {
+        toast.error(error.message || "Failed to sign in. Please check your credentials.");
+      } else if (success) {
+        toast.success("Signed in successfully!");
+      }
     } catch (error) {
-      toast.error("Failed to sign in. Please check your credentials.");
+      toast.error("An unexpected error occurred. Please try again.");
+      console.error("Error during sign in:", error);
     } finally {
       setIsLoading(false);
     }
@@ -107,7 +110,7 @@ const SignIn = () => {
               <span className="mx-4 flex-shrink text-gray-400">or</span>
               <div className="flex-grow border-t border-gray-200"></div>
             </div>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" disabled>
               Continue with Google
             </Button>
             <div className="text-center text-sm">

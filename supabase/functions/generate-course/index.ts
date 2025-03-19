@@ -5,6 +5,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
 const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
 
+// Ensure proper CORS headers are set
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -17,9 +18,12 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Function invoked with body:", await req.clone().text());
+    
     const { title, level } = await req.json();
     
     if (!title || !level) {
+      console.error("Missing required parameters:", { title, level });
       return new Response(
         JSON.stringify({ error: 'Title and level are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -27,6 +31,22 @@ serve(async (req) => {
     }
 
     console.log(`Generating course for: ${title}, Level: ${level}`);
+
+    if (!GEMINI_API_KEY) {
+      console.error("GOOGLE_GEMINI_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: 'API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!YOUTUBE_API_KEY) {
+      console.error("YOUTUBE_API_KEY not configured");
+      return new Response(
+        JSON.stringify({ error: 'YouTube API key not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Generate course content using Gemini API
     const courseStructure = await generateCourseStructure(title, level);

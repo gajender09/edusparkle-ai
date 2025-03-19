@@ -59,6 +59,7 @@ const CreateCourse = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCourse, setGeneratedCourse] = useState<GeneratedCourse | null>(null);
   const [activeTab, setActiveTab] = useState("content");
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   const handleGenerateCourse = async () => {
@@ -82,25 +83,34 @@ const CreateCourse = () => {
     }
 
     setIsGenerating(true);
+    setError(null);
     
     try {
-      const response = await supabase.functions.invoke('generate-course', {
+      console.log("Invoking generate-course function with:", { title, level });
+      
+      const { data, error } = await supabase.functions.invoke('generate-course', {
         body: { title, level },
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || 'Failed to generate course');
+      if (error) {
+        console.error("Edge function error:", error);
+        throw new Error(error.message || 'Failed to generate course');
+      }
+      
+      if (!data) {
+        throw new Error('No data returned from course generation');
       }
 
-      const generatedCourseData = response.data as GeneratedCourse;
+      console.log("Generated course data:", data);
       
-      setGeneratedCourse(generatedCourseData);
+      setGeneratedCourse(data as GeneratedCourse);
       toast({
         title: "Course Generated!",
         description: "Your AI-generated course is ready to explore.",
       });
     } catch (error) {
       console.error("Error generating course:", error);
+      setError(error instanceof Error ? error.message : "Failed to generate course");
       toast({
         title: "Generation Failed",
         description: error instanceof Error ? error.message : "Failed to generate course. Please try again.",
@@ -212,6 +222,12 @@ const CreateCourse = () => {
                   </Select>
                 </div>
               </div>
+              
+              {error && (
+                <div className="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                  Error: {error}
+                </div>
+              )}
               
               <Button 
                 onClick={handleGenerateCourse} 

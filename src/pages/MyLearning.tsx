@@ -103,8 +103,15 @@ const MyLearning = () => {
               </div>
             ) : enrolledCourses.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {enrolledCourses.map((course, index) => (
-                  <CourseCard key={`enrolled-${course.id}`} {...course} />
+                {enrolledCourses.map((course) => (
+                  <CourseCard 
+                    key={`enrolled-${course.id}`} 
+                    title={course.title}
+                    description={course.description || ""}
+                    image={`https://source.unsplash.com/random/800x600?${encodeURIComponent(course.title)}`}
+                    category={course.level.charAt(0).toUpperCase() + course.level.slice(1)}
+                    progress={course.progress}
+                  />
                 ))}
               </div>
             ) : (

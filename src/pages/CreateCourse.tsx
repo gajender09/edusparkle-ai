@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -88,14 +89,16 @@ const CreateCourse = () => {
     try {
       console.log("Invoking generate-course function with:", { title, level });
       
-      const { data, error } = await supabase.functions.invoke('generate-course', {
+      const { data, error: functionError } = await supabase.functions.invoke('generate-course', {
         body: { title, level },
       });
 
-      if (error) {
-        console.error("Edge function error:", error);
-        throw new Error(error.message || 'Failed to generate course');
+      if (functionError) {
+        console.error("Edge function error:", functionError);
+        throw new Error(functionError.message || 'Failed to generate course');
       }
+      
+      console.log("Response from edge function:", data);
       
       if (!data) {
         throw new Error('No data returned from course generation');

@@ -18,9 +18,26 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Function invoked with body:", await req.clone().text());
+    // Log the incoming request
+    console.log("Function invoked with method:", req.method);
+    console.log("Headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
     
-    const { title, level } = await req.json();
+    // Clone the request before reading the body to avoid "Already consumed" errors
+    const reqBody = await req.clone().text();
+    console.log("Function invoked with body:", reqBody);
+    
+    let requestData;
+    try {
+      requestData = JSON.parse(reqBody);
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const { title, level } = requestData;
     
     if (!title || !level) {
       console.error("Missing required parameters:", { title, level });
@@ -118,6 +135,12 @@ async function generateCourseStructure(title: string, level: string) {
       })
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Gemini API error response:", errorData);
+      throw new Error(`Gemini API returned ${response.status}: ${errorData}`);
+    }
+
     const data = await response.json();
     console.log("Received response from Gemini API");
     
@@ -214,6 +237,13 @@ async function findYouTubeVideos(title: string, level: string) {
     
     console.log("Fetching YouTube videos");
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("YouTube API error response:", errorData);
+      throw new Error(`YouTube API returned ${response.status}: ${errorData}`);
+    }
+    
     const data = await response.json();
     
     if (data.error) {

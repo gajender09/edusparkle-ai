@@ -5,4 +5,9 @@ project_id = "zomlveojlqmqqovozhjn"
 enabled = true
 
 [functions]
+[functions.deploy]
 enabled = true
+
+[functions.serve]
+enabled = true
+

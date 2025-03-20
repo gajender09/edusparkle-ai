@@ -106,6 +106,7 @@ export function useCourseGenerator() {
     }
 
     try {
+      // Fixed: Insert a single object, not an array
       const { error } = await supabase
         .from('courses')
         .insert({

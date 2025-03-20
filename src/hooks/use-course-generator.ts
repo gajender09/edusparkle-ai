@@ -42,19 +42,23 @@ export function useCourseGenerator() {
     try {
       console.log("Invoking generate-course function with:", { title, level });
       
+      // Improved error handling with more descriptive messages
       const { data, error: functionError } = await supabase.functions.invoke('generate-course', {
         body: { title, level },
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
       if (functionError) {
-        console.error("Edge function error:", functionError);
-        throw new Error(functionError.message || 'Failed to generate course');
+        console.error("Edge function error details:", functionError);
+        throw new Error(functionError.message || 'Failed to connect to course generation service');
       }
       
       console.log("Response from edge function:", data);
       
       if (!data) {
-        throw new Error('No data returned from course generation');
+        throw new Error('No data returned from course generation service');
       }
 
       console.log("Generated course data:", data);
@@ -66,10 +70,14 @@ export function useCourseGenerator() {
       });
     } catch (error) {
       console.error("Error generating course:", error);
-      setError(error instanceof Error ? error.message : "Failed to generate course");
+      setError(error instanceof Error 
+        ? error.message 
+        : "Failed to connect to course generation service. Please try again later.");
       toast({
         title: "Generation Failed",
-        description: error instanceof Error ? error.message : "Failed to generate course. Please try again.",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to connect to course generation service. Please try again later.",
         variant: "destructive",
       });
     } finally {

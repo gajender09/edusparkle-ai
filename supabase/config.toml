@@ -1,13 +1,8 @@
 
 project_id = "zomlveojlqmqqovozhjn"
 
-[api]
-enabled = true
-
 [functions]
 [functions.deploy]
 enabled = true
-
 [functions.serve]
 enabled = true
-

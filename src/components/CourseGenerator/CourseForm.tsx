@@ -5,6 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CourseLevel } from "@/types/course";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface CourseFormProps {
   title: string;
@@ -69,9 +71,11 @@ const CourseForm = ({
         </div>
         
         {error && (
-          <div className="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
-            Error: {error}
-          </div>
+          <Alert variant="destructive" className="my-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         
         <Button 
@@ -80,8 +84,19 @@ const CourseForm = ({
           className="w-full"
           size="lg"
         >
-          {isGenerating ? "Generating Course..." : "Generate AI Course"}
+          {isGenerating ? (
+            <>
+              <span className="animate-pulse mr-2">⚙️</span>
+              Generating Course...
+            </>
+          ) : "Generate AI Course"}
         </Button>
+        
+        {isGenerating && (
+          <p className="text-sm text-gray-500 text-center mt-2">
+            This may take up to 30 seconds as we create your customized course
+          </p>
+        )}
       </div>
     </div>
   );

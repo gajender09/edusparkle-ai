@@ -1,272 +1,217 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { CourseLevel } from "../../../src/types/course.ts";
 
-const GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
-
-// Ensure proper CORS headers are set
+// Define CORS headers for the function
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Sample data for the course content based on different topics
+const courseSamples: Record<string, any> = {
+  // Sample templates would be defined here
+};
+
+interface RequestData {
+  title: string;
+  level: CourseLevel;
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log("Handling OPTIONS preflight request");
-    return new Response(null, { 
-      status: 204, 
-      headers: corsHeaders 
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Log the incoming request
-    console.log("Function invoked with method:", req.method);
-    console.log("Headers:", JSON.stringify(Object.fromEntries(req.headers.entries())));
-    
-    // Clone the request before reading the body to avoid "Already consumed" errors
-    const reqBody = await req.clone().text();
-    console.log("Function invoked with body:", reqBody);
-    
-    let requestData;
-    try {
-      requestData = JSON.parse(reqBody);
-    } catch (e) {
-      console.error("Error parsing request body:", e);
-      return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
+    console.log("Function invoked: generate-course");
+    // Get the request body
+    const requestData = await req.json() as RequestData;
     const { title, level } = requestData;
+
+    console.log(`Generating course for title: ${title}, level: ${level}`);
     
-    if (!title || !level) {
-      console.error("Missing required parameters:", { title, level });
-      return new Response(
-        JSON.stringify({ error: 'Title and level are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`Generating course for: ${title}, Level: ${level}`);
-
-    if (!GEMINI_API_KEY) {
-      console.error("GOOGLE_GEMINI_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: 'API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!YOUTUBE_API_KEY) {
-      console.error("YOUTUBE_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: 'YouTube API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Generate course content using Gemini API
-    const courseStructure = await generateCourseStructure(title, level);
+    // Generate a sample description based on the title
+    const description = `A comprehensive ${level} level course on ${title} designed to help you master the subject through structured learning and practical exercises.`;
     
-    // Find related YouTube videos
-    const youtubeVideos = await findYouTubeVideos(title, level);
+    // Generate modules based on the title
+    const moduleCount = level === "beginner" ? 3 : level === "intermediate" ? 4 : 5;
+    const modules = Array.from({ length: moduleCount }).map((_, i) => ({
+      title: `Module ${i + 1}: ${getModuleTitle(title, i)}`,
+      description: `Learn the ${i === 0 ? "fundamentals" : i === 1 ? "intermediate concepts" : "advanced techniques"} of ${title} in this comprehensive module.`,
+      lessons: Array.from({ length: 3 }).map((_, j) => ({
+        title: `Lesson ${j + 1}: ${getLessonTitle(title, i, j)}`,
+        description: `${getRandomLessonDescription(title, level)}`
+      }))
+    }));
 
-    // Combine all data into a complete course
+    // Generate glossary items
+    const glossaryItems = generateGlossaryItems(title, 8);
+    
+    // Generate roadmap
+    const roadmap = generateRoadmap(title, level);
+    
+    // Generate resources
+    const resources = generateResources(title);
+
+    // Create the response
     const generatedCourse = {
       title,
       level,
-      description: courseStructure.description,
-      content: courseStructure.content,
-      glossary: courseStructure.glossary,
-      roadmap: courseStructure.roadmap,
-      resources: {
-        articles: courseStructure.resources.articles,
-        videos: youtubeVideos
-      }
+      description,
+      content: {
+        modules
+      },
+      glossary: glossaryItems,
+      roadmap,
+      resources
     };
-
-    console.log("Successfully generated course, returning response");
-    return new Response(
-      JSON.stringify(generatedCourse),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    
+    console.log("Course generated successfully");
+    
+    // Return the generated course
+    return new Response(JSON.stringify(generatedCourse), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('Error generating course:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Failed to generate course' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error("Error generating course:", error);
+    return new Response(JSON.stringify({ 
+      error: "Failed to generate course", 
+      details: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
 
-async function generateCourseStructure(title: string, level: string) {
-  try {
-    const prompt = `
-      Create a comprehensive learning curriculum for "${title}" at a ${level} level. 
-      Include the following:
-      
-      1. A detailed course description (100-150 words)
-      2. Course content with modules and lessons (2-3 modules, each with 3-4 lessons)
-      3. A glossary of key terms (4-6 terms with definitions)
-      4. A learning roadmap with stages and milestones (3 stages, each with 3 milestones)
-      5. Resource articles (3-4 article recommendations with titles and hypothetical URLs)
-      
-      Format the response as JSON with these keys: description, content, glossary, roadmap, resources.
-      Keep the response concise and focused on creating a practical learning path.
-    `;
+// Helper functions to generate course content
+function getModuleTitle(title: string, index: number): string {
+  const modules = [
+    `Introduction to ${title}`,
+    `Core Principles of ${title}`,
+    `Practical Applications in ${title}`,
+    `Advanced Concepts in ${title}`,
+    `Mastering ${title} Techniques`,
+  ];
+  return modules[index % modules.length];
+}
 
-    console.log("Sending request to Gemini API");
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: prompt }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
-        }
-      })
-    });
+function getLessonTitle(title: string, moduleIndex: number, lessonIndex: number): string {
+  const baseLessons = [
+    [`Understanding ${title} Basics`, `Key Concepts in ${title}`, `Getting Started with ${title}`],
+    [`Building Your First ${title} Project`, `${title} Best Practices`, `Problem Solving with ${title}`],
+    [`Real-world ${title} Case Studies`, `${title} in Industry`, `Optimizing Your ${title} Workflow`],
+    [`${title} Design Patterns`, `Advanced ${title} Techniques`, `${title} Architecture`],
+    [`Expert ${title} Strategies`, `Innovation in ${title}`, `Future Trends in ${title}`],
+  ];
+  
+  return baseLessons[moduleIndex % baseLessons.length][lessonIndex % 3];
+}
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error("Gemini API error response:", errorData);
-      throw new Error(`Gemini API returned ${response.status}: ${errorData}`);
-    }
+function getRandomLessonDescription(title: string, level: string): string {
+  const descriptions = [
+    `Explore the foundational elements of ${title} and how they apply in various contexts.`,
+    `Gain hands-on experience by implementing ${title} concepts in practical scenarios.`,
+    `Learn how to apply ${title} principles to solve real-world problems efficiently.`,
+    `Understand the theoretical underpinnings of ${title} and their practical applications.`,
+    `Master the essential techniques needed to excel in ${title}.`,
+    `Develop critical thinking skills by analyzing complex ${title} problems and solutions.`
+  ];
+  
+  return descriptions[Math.floor(Math.random() * descriptions.length)];
+}
 
-    const data = await response.json();
-    console.log("Received response from Gemini API");
-    
-    if (data.error) {
-      throw new Error(`Gemini API error: ${data.error.message}`);
+function generateGlossaryItems(title: string, count: number) {
+  const baseTerms = [
+    { term: "Algorithm", definition: `A step-by-step procedure for solving a problem or accomplishing a task in ${title}.` },
+    { term: "Framework", definition: `A structured approach or platform used to develop ${title} applications.` },
+    { term: "Methodology", definition: `A system of methods used in ${title} to achieve specific outcomes.` },
+    { term: "Paradigm", definition: `A fundamental pattern or model that shapes the approach to ${title}.` },
+    { term: "Integration", definition: `The process of combining different components or systems in ${title}.` },
+    { term: "Optimization", definition: `The process of making ${title} processes more efficient and effective.` },
+    { term: "Implementation", definition: `The execution or application of ${title} principles in practice.` },
+    { term: "Scalability", definition: `The capability of ${title} systems to handle growing amounts of work.` },
+    { term: "Architecture", definition: `The structure and organization of ${title} systems or components.` },
+    { term: "Deployment", definition: `The process of making ${title} applications available for use.` },
+  ];
+  
+  return baseTerms.slice(0, count);
+}
+
+function generateRoadmap(title: string, level: CourseLevel) {
+  const beginnerRoadmap = [
+    { 
+      stage: "Foundation", 
+      milestones: [
+        `Learn the basics of ${title}`,
+        `Complete introductory exercises`,
+        `Build your first simple project`
+      ] 
+    },
+    { 
+      stage: "Development", 
+      milestones: [
+        `Apply core concepts in practice`,
+        `Explore common patterns in ${title}`,
+        `Participate in community discussions`
+      ] 
+    },
+    { 
+      stage: "Mastery", 
+      milestones: [
+        `Complete a capstone project`,
+        `Review and reinforce learning`,
+        `Prepare for intermediate studies`
+      ] 
     }
-    
-    const generatedText = data.candidates[0].content.parts[0].text;
-    
-    // Extract the JSON from the response text
-    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Failed to extract JSON from Gemini response");
+  ];
+  
+  const intermediateRoadmap = [
+    ...beginnerRoadmap,
+    { 
+      stage: "Advanced Applications", 
+      milestones: [
+        `Implement complex ${title} solutions`,
+        `Optimize performance and efficiency`,
+        `Contribute to open source projects`
+      ] 
     }
-    
-    const courseData = JSON.parse(jsonMatch[0]);
-    console.log("Successfully parsed course data from Gemini");
-    
-    return courseData;
-  } catch (error) {
-    console.error("Error in generateCourseStructure:", error);
-    // Return a basic structure if generation fails
-    return {
-      description: `A comprehensive ${level} level course on ${title}.`,
-      content: {
-        modules: [
-          {
-            title: "Getting Started with " + title,
-            description: "Learn the fundamentals and key concepts.",
-            lessons: [
-              { title: "Introduction to " + title, description: "An overview of the subject and its importance." },
-              { title: "Core Concepts", description: "Understanding the essential principles." },
-              { title: "Setup Your Learning Environment", description: "Prepare the tools and resources you'll need." }
-            ]
-          },
-          {
-            title: "Building Your Knowledge",
-            description: "Develop deeper understanding through hands-on practice.",
-            lessons: [
-              { title: "Practical Applications", description: "Applying concepts to real-world scenarios." },
-              { title: "Problem Solving Techniques", description: "Develop your analytical thinking." },
-              { title: "Advanced Implementation", description: "Take your skills to the next level." }
-            ]
-          }
-        ]
-      },
-      glossary: [
-        { term: title + " Architecture", definition: "The foundational structure that defines how components work together." },
-        { term: "Implementation Patterns", definition: "Standardized approaches to solving common problems in the field." },
-        { term: "Best Practices", definition: "Recommended methods and techniques widely accepted by experts." },
-        { term: "Optimization Strategies", definition: "Approaches to improve efficiency and performance." }
-      ],
-      roadmap: [
-        { 
-          stage: "Foundation", 
-          milestones: [
-            "Understand basic principles",
-            "Complete introductory exercises",
-            "Pass the knowledge assessment"
-          ] 
-        },
-        { 
-          stage: "Application", 
-          milestones: [
-            "Apply concepts to a small project",
-            "Receive feedback and iterate",
-            "Document your learning process"
-          ] 
-        },
-        { 
-          stage: "Mastery", 
-          milestones: [
-            "Complete an advanced project",
-            "Teach concepts to others",
-            "Contribute to the community"
-          ] 
-        }
-      ],
-      resources: {
-        articles: [
-          { title: "Comprehensive Guide to " + title, url: "https://example.com/guide" },
-          { title: title + " for " + level + "s", url: "https://example.com/level-guide" },
-          { title: "Latest Trends in " + title, url: "https://example.com/trends" }
-        ]
-      }
-    };
+  ];
+  
+  const advancedRoadmap = [
+    ...intermediateRoadmap,
+    { 
+      stage: "Expertise", 
+      milestones: [
+        `Research and innovate new approaches`,
+        `Lead projects and mentor others`,
+        `Stay updated with cutting-edge developments`
+      ] 
+    }
+  ];
+  
+  switch(level) {
+    case "beginner": return beginnerRoadmap;
+    case "intermediate": return intermediateRoadmap;
+    case "advanced": return advancedRoadmap;
+    default: return beginnerRoadmap;
   }
 }
 
-async function findYouTubeVideos(title: string, level: string) {
-  try {
-    const query = encodeURIComponent(`${title} ${level} tutorial`);
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=3&q=${query}&type=video&key=${YOUTUBE_API_KEY}`;
-    
-    console.log("Fetching YouTube videos");
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error("YouTube API error response:", errorData);
-      throw new Error(`YouTube API returned ${response.status}: ${errorData}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.error) {
-      throw new Error(`YouTube API error: ${data.error.message}`);
-    }
-    
-    return data.items.map((item: any) => ({
-      title: item.snippet.title,
-      url: `https://www.youtube.com/watch?v=${item.id.videoId}`
-    }));
-  } catch (error) {
-    console.error("Error in findYouTubeVideos:", error);
-    // Return fallback videos if API call fails
-    return [
-      { title: title + " Crash Course", url: "https://example.com/crash-course" },
-      { title: "Deep Dive into " + title, url: "https://example.com/deep-dive" },
-      { title: "Expert Tips for " + title, url: "https://example.com/tips" }
-    ];
-  }
+function generateResources(title: string) {
+  return {
+    articles: [
+      { title: `Introduction to ${title}`, url: `https://example.com/intro-${encodeURIComponent(title.toLowerCase())}` },
+      { title: `${title} Best Practices`, url: `https://example.com/${encodeURIComponent(title.toLowerCase())}-best-practices` },
+      { title: `${title} in Industry`, url: `https://example.com/${encodeURIComponent(title.toLowerCase())}-industry-applications` },
+    ],
+    videos: [
+      { title: `${title} for Beginners`, url: `https://example.com/videos/${encodeURIComponent(title.toLowerCase())}-beginners` },
+      { title: `Advanced ${title} Techniques`, url: `https://example.com/videos/${encodeURIComponent(title.toLowerCase())}-advanced` },
+      { title: `${title} Case Studies`, url: `https://example.com/videos/${encodeURIComponent(title.toLowerCase())}-case-studies` },
+    ]
+  };
 }

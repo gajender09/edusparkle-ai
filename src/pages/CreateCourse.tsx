@@ -3,6 +3,7 @@ import NavigationHeader from "@/components/NavigationHeader";
 import CourseForm from "@/components/CourseGenerator/CourseForm";
 import CoursePreview from "@/components/CourseGenerator/CoursePreview";
 import { useCourseGenerator } from "@/hooks/use-course-generator";
+import Footer from "@/components/Footer";
 
 const CreateCourse = () => {
   const {
@@ -40,6 +41,7 @@ const CreateCourse = () => {
           )}
         </div>
       </main>
+      <Footer />
     </div>
   );
 };

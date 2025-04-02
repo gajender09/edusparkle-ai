@@ -1,143 +1,113 @@
 
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { GeneratedCourse, CourseLevel } from "@/types/course";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { CourseLevel, GeneratedCourse } from "@/types/course";
 
-export function useCourseGenerator() {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const [title, setTitle] = useState("");
+export const useCourseGenerator = () => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState<string>("");
   const [level, setLevel] = useState<CourseLevel>("beginner");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generatedCourse, setGeneratedCourse] = useState<GeneratedCourse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
 
   const handleGenerateCourse = async () => {
     if (!title) {
-      toast({
-        title: "Title Required",
-        description: "Please enter a course title",
-        variant: "destructive",
-      });
+      setError("Please enter a course title");
       return;
     }
 
     if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to generate courses",
-        variant: "destructive",
-      });
-      navigate("/sign-in");
+      toast.error("You need to sign in to generate courses");
       return;
     }
 
-    setIsGenerating(true);
     setError(null);
-    
+    setIsGenerating(true);
+    setGeneratedCourse(null);
+
     try {
-      console.log("Invoking generate-course function with:", { title, level });
-      
-      // Improved error handling with more descriptive messages
-      const { data, error: functionError } = await supabase.functions.invoke('generate-course', {
+      console.log("Calling generate course function");
+      const { data, error } = await supabase.functions.invoke("generate-course", {
         body: { title, level },
-        headers: {
-          'Content-Type': 'application/json',
-        },
       });
 
-      if (functionError) {
-        console.error("Edge function error details:", functionError);
-        throw new Error(functionError.message || 'Failed to connect to course generation service');
+      if (error) {
+        console.error("Error generating course:", error);
+        throw new Error(error.message || "Failed to generate course");
       }
-      
-      console.log("Response from edge function:", data);
-      
+
       if (!data) {
-        throw new Error('No data returned from course generation service');
+        throw new Error("No data returned from course generation");
       }
 
-      console.log("Generated course data:", data);
-      
-      setGeneratedCourse(data as GeneratedCourse);
-      toast({
-        title: "Course Generated!",
-        description: "Your AI-generated course is ready to explore.",
-      });
-    } catch (error) {
-      console.error("Error generating course:", error);
-      setError(error instanceof Error 
-        ? error.message 
-        : "Failed to connect to course generation service. Please try again later.");
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error 
-          ? error.message 
-          : "Failed to connect to course generation service. Please try again later.",
-        variant: "destructive",
-      });
+      console.log("Course generated successfully:", data);
+
+      // Validate course data
+      if (
+        !data.title ||
+        !data.description ||
+        !data.content ||
+        !data.glossary ||
+        !data.roadmap ||
+        !data.resources
+      ) {
+        throw new Error("Generated course data is incomplete");
+      }
+
+      const generatedCourse = {
+        title: data.title,
+        description: data.description,
+        level,
+        content: data.content,
+        glossary: data.glossary,
+        roadmap: data.roadmap,
+        resources: data.resources,
+      };
+
+      setGeneratedCourse(generatedCourse);
+      toast.success("Course generated successfully!");
+    } catch (err: any) {
+      console.error("Error in course generation:", err);
+      setError(err.message || "Failed to generate course. Please try again.");
+      toast.error("Failed to generate course");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleSaveCourse = async () => {
-    if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to save courses",
-        variant: "destructive",
-      });
-      navigate("/sign-in");
-      return;
-    }
-
-    if (!generatedCourse) {
-      toast({
-        title: "No Course to Save",
-        description: "Please generate a course first",
-        variant: "destructive",
-      });
+    if (!generatedCourse || !user) {
+      toast.error("Unable to save course");
       return;
     }
 
     try {
-      // The insert method expects a single object, not an array
-      const { error } = await supabase
-        .from('courses')
-        .insert({
-          user_id: user.id,
-          title: generatedCourse.title,
-          level: generatedCourse.level,
-          description: generatedCourse.description,
-          content: generatedCourse.content,
-          glossary: generatedCourse.glossary,
-          roadmap: generatedCourse.roadmap,
-          resources: generatedCourse.resources
-        });
+      toast.loading("Saving course...");
+
+      // Fix: Correctly format the object for insertion
+      const { error } = await supabase.from("courses").insert({
+        title: generatedCourse.title,
+        description: generatedCourse.description,
+        level: generatedCourse.level,
+        content: generatedCourse.content,
+        glossary: generatedCourse.glossary,
+        roadmap: generatedCourse.roadmap,
+        resources: generatedCourse.resources,
+        user_id: user.id
+      });
 
       if (error) {
         throw error;
       }
 
-      toast({
-        title: "Course Saved",
-        description: "Your course has been added to your library.",
-      });
-      
-      // Navigate to home or course page
-      setTimeout(() => navigate("/my-learning"), 1500);
-    } catch (error) {
-      console.error("Error saving course:", error);
-      toast({
-        title: "Failed to Save",
-        description: "There was an error saving your course. Please try again.",
-        variant: "destructive",
-      });
+      toast.dismiss();
+      toast.success("Course saved successfully!");
+    } catch (error: any) {
+      toast.dismiss();
+      toast.error("Failed to save course: " + error.message);
     }
   };
 
@@ -150,6 +120,6 @@ export function useCourseGenerator() {
     generatedCourse,
     error,
     handleGenerateCourse,
-    handleSaveCourse
+    handleSaveCourse,
   };
-}
+};

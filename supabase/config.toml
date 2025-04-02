@@ -4,5 +4,5 @@ project_id = "zomlveojlqmqqovozhjn"
 [functions]
 [functions.deploy]
 enabled = true
-[functions.serve]
-enabled = true
+[functions.generate-course]
+verify_jwt = true

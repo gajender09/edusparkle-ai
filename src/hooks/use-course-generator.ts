@@ -106,7 +106,8 @@ export function useCourseGenerator() {
     }
 
     try {
-      // Fixed: Insert a single object, not an array
+      // Fixed: The insert method expects the data properly formatted
+      // The TypeScript error was because we need to pass the object directly, not as a property
       const { error } = await supabase
         .from('courses')
         .insert({

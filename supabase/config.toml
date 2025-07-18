@@ -1,8 +1,1 @@
-
-project_id = "zomlveojlqmqqovozhjn"
-
-[functions]
-[functions.deploy]
-enabled = true
-[functions.generate-course]
-verify_jwt = true
+project_id = "oivdzgrxvwsqqwhxedmt"

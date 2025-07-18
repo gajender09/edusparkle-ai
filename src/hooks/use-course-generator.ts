@@ -57,7 +57,7 @@ export const useCourseGenerator = () => {
         throw new Error("Generated course data is incomplete");
       }
 
-      const generatedCourse = {
+      const generatedCourse: GeneratedCourse = {
         title: data.title,
         description: data.description,
         level,

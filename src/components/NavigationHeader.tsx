@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 const NavigationHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { profile } = useAuth();
-  const firstName = profile?.full_name ? profile.full_name.split(' ')[0] : '';
+  const firstName = profile?.display_name ? profile.display_name.split(' ')[0] : '';
   
   return (
     <header className="fixed top-0 w-full bg-white/80 backdrop-blur-lg border-b border-gray-100 z-50">

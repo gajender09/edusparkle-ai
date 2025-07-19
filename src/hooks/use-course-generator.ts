@@ -92,10 +92,10 @@ export const useCourseGenerator = () => {
         title: generatedCourse.title,
         description: generatedCourse.description,
         level: generatedCourse.level,
-        content: generatedCourse.content,
-        glossary: generatedCourse.glossary,
-        roadmap: generatedCourse.roadmap,
-        resources: generatedCourse.resources,
+        content: generatedCourse.content as any,
+        glossary: generatedCourse.glossary as any,
+        roadmap: generatedCourse.roadmap as any,
+        resources: generatedCourse.resources as any,
         user_id: user.id
       });
 

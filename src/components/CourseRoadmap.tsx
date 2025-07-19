@@ -3,7 +3,10 @@ import { CheckCircle2 } from "lucide-react";
 
 interface RoadmapStage {
   stage: string;
-  milestones: string[];
+  description: string;
+  timeframe: string;
+  skills: string[];
+  milestones?: string[];
 }
 
 interface CourseRoadmapProps {
@@ -35,14 +38,19 @@ const CourseRoadmap = ({ roadmap }: CourseRoadmapProps) => {
               </p>
             </div>
             
+            <div className="mb-3 text-gray-600">
+              <p>{stage.description}</p>
+              <span className="text-sm text-blue-600 font-medium">Duration: {stage.timeframe}</span>
+            </div>
+            
             <ul className="mt-4 space-y-3">
-              {stage.milestones.map((milestone, milestoneIndex) => (
+              {stage.skills.map((skill, skillIndex) => (
                 <li 
-                  key={`milestone-${stageIndex}-${milestoneIndex}`}
+                  key={`skill-${stageIndex}-${skillIndex}`}
                   className="flex items-start gap-2"
                 >
                   <CheckCircle2 className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-                  <span>{milestone}</span>
+                  <span>{skill}</span>
                 </li>
               ))}
             </ul>

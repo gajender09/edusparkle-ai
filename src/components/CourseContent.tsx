@@ -8,11 +8,16 @@ import {
 } from "@/components/ui/accordion";
 
 interface Lesson {
+  id: number;
   title: string;
-  description: string;
+  content: string;
+  duration: string;
+  keyPoints: string[];
+  description?: string;
 }
 
 interface Module {
+  id: number;
   title: string;
   description: string;
   lessons: Lesson[];

@@ -107,11 +107,13 @@ const MyLearning = () => {
                 {enrolledCourses.map((course) => (
                   <CourseCard 
                     key={`enrolled-${course.id}`} 
-                    title={course.title}
-                    description={course.description || ""}
-                    image={`https://source.unsplash.com/random/800x600?${encodeURIComponent(course.title)}`}
-                    category={course.level.charAt(0).toUpperCase() + course.level.slice(1)}
-                    progress={course.progress}
+                    course={{
+                      id: course.id,
+                      title: course.title,
+                      description: course.description || "",
+                      level: course.level as "beginner" | "intermediate" | "advanced",
+                    }}
+                    onClick={() => console.log("View course:", course.id)}
                   />
                 ))}
               </div>
